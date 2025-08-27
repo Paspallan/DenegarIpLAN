@@ -14,6 +14,7 @@ from .subreddits import (
 from .auth import RedditScriptAuth
 from .crosspost import list_user_posts, filter_candidates_by_subreddit, crosspost
 from .subdiscover import discover_image_subreddits
+from .media import upload_image_and_get_media_id, submit_image_post
 from .scheduler import SchedulerConfig, run_scheduler
 
 
@@ -184,6 +185,14 @@ def cmd_scheduler(args: argparse.Namespace) -> None:
     run_scheduler(cfg, auth)
 
 
+def cmd_post_image(args: argparse.Namespace) -> None:
+    auth = RedditScriptAuth.from_env()
+    media_id = upload_image_and_get_media_id(auth, args.file)
+    res = submit_image_post(auth, subreddit=args.subreddit, title=args.title, media_id=media_id, nsfw=args.nsfw, spoiler=args.spoiler)
+    import json
+    print(json.dumps(res, ensure_ascii=False, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reddit_cli", description="Reddit Subreddit Explorer (read-only)"
@@ -257,6 +266,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_sched.add_argument("--state-file", default="reddit_cli_state.json")
     p_sched.add_argument("--execute", action="store_true", help="Actually post (omit for dry-run)")
     p_sched.set_defaults(func=cmd_scheduler)
+
+    p_img = sub.add_parser("post-image", help="Post a local image as native image post")
+    p_img.add_argument("--subreddit", required=True)
+    p_img.add_argument("--title", required=True)
+    p_img.add_argument("--file", required=True)
+    p_img.add_argument("--nsfw", action="store_true")
+    p_img.add_argument("--spoiler", action="store_true")
+    p_img.set_defaults(func=cmd_post_image)
 
     return parser
 
