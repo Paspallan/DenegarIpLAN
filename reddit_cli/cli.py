@@ -14,6 +14,7 @@ from .subreddits import (
 from .auth import RedditScriptAuth
 from .crosspost import list_user_posts, filter_candidates_by_subreddit, crosspost
 from .subdiscover import discover_image_subreddits
+from .scheduler import SchedulerConfig, run_scheduler
 
 
 def cmd_search(args: argparse.Namespace) -> None:
@@ -157,6 +158,32 @@ def cmd_crosspost_from_subreddit(args: argparse.Namespace) -> None:
             sleep(2)
 
 
+def cmd_scheduler(args: argparse.Namespace) -> None:
+    auth = RedditScriptAuth.from_env()
+    pairs = []
+    for part in args.routes.split(","):
+        if ":" not in part:
+            continue
+        src, dst = part.split(":", 1)
+        pairs.append((src.strip(), dst.strip()))
+    if not pairs:
+        print("No valid routes parsed. Use format 'source:dest,source2:dest2'")
+        return
+    cfg = SchedulerConfig(
+        routes=pairs,
+        min_score=args.min_score,
+        older_than_days=args.older_than_days,
+        time_range=args.time_range,
+        limit_per_source=args.limit_per_source,
+        min_wait_seconds=args.min_wait_seconds,
+        max_wait_seconds=args.max_wait_seconds,
+        max_posts=args.max_posts,
+        state_file=args.state_file,
+        execute=args.execute,
+    )
+    run_scheduler(cfg, auth)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reddit_cli", description="Reddit Subreddit Explorer (read-only)"
@@ -217,6 +244,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_xsub.add_argument("--limit", type=int, default=200, help="Max posts to scan")
     p_xsub.add_argument("--execute", action="store_true", help="Actually post (omit for dry-run)")
     p_xsub.set_defaults(func=cmd_crosspost_from_subreddit)
+
+    p_sched = sub.add_parser("scheduler", help="Periodic crosspost with 1-2h random waits")
+    p_sched.add_argument("--routes", required=True, help="Comma-separated list of source:dest pairs, e.g. 'carporn:carpics,EarthPorn:MostBeautiful'")
+    p_sched.add_argument("--min-score", type=int, default=800)
+    p_sched.add_argument("--older-than-days", type=int, default=180)
+    p_sched.add_argument("--time-range", default="all", choices=["year","all"]) 
+    p_sched.add_argument("--limit-per-source", type=int, default=100)
+    p_sched.add_argument("--min-wait-seconds", type=int, default=3600)
+    p_sched.add_argument("--max-wait-seconds", type=int, default=7200)
+    p_sched.add_argument("--max-posts", type=int, default=10)
+    p_sched.add_argument("--state-file", default="reddit_cli_state.json")
+    p_sched.add_argument("--execute", action="store_true", help="Actually post (omit for dry-run)")
+    p_sched.set_defaults(func=cmd_scheduler)
 
     return parser
 

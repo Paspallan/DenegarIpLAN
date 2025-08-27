@@ -29,6 +29,13 @@ python3 -m reddit_cli discover-image-subs --limit-per-query 20
 python3 -m reddit_cli candidates --from-user TU_USER --source-subreddit cars --min-score 200 --older-than-days 90
 python3 -m reddit_cli crosspost --fullname t3_abcdef --to-subreddit cars --title "Mi título" --execute
 python3 -m reddit_cli crosspost-from-subreddit --subreddit cars --to-subreddit carpics --author-allowlist all --min-score 800 --older-than-days 180 --time-range all --limit 200 --execute
+
+# Scheduler (periodic, 1–2h de espera aleatoria entre posts)
+python3 -m reddit_cli scheduler \
+  --routes "carporn:carpics,EarthPorn:MostBeautiful" \
+  --min-score 800 --older-than-days 180 --time-range all \
+  --limit-per-source 100 --min-wait-seconds 3600 --max-wait-seconds 7200 \
+  --max-posts 5 --state-file reddit_cli_state.json --execute
 ```
 
 ### Notas de cumplimiento
