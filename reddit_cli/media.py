@@ -12,21 +12,28 @@ from .auth import RedditScriptAuth
 from .http import REDDIT_UA
 
 
-def _post_json(url: str, payload: Dict[str, Any], bearer: str, timeout: int = 30) -> Dict[str, Any]:
+def _post_json(url: str, payload: Dict[str, Any], bearer: str, timeout: int = 30, retries: int = 3) -> Dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
-    req = Request(
-        url,
-        data=data,
-        headers={
-            "User-Agent": REDDIT_UA,
-            "Authorization": f"Bearer {bearer}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        method="POST",
-    )
-    with urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    last_err = None
+    for attempt in range(retries):
+        req = Request(
+            url,
+            data=data,
+            headers={
+                "User-Agent": REDDIT_UA,
+                "Authorization": f"Bearer {bearer}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = e
+            time.sleep(1 + attempt)
+    raise last_err  # type: ignore[misc]
 
 
 def _multipart_post(url: str, fields: Dict[str, str], file_field_name: str, file_tuple: Tuple[str, bytes, str], timeout: int = 60) -> bytes:
@@ -62,8 +69,12 @@ def _multipart_post(url: str, fields: Dict[str, str], file_field_name: str, file
 def upload_image_and_get_media_id(auth: RedditScriptAuth, image_path: str) -> str:
     bearer = auth.get_token()
     guessed = mimetypes.guess_type(image_path)[0] or "image/jpeg"
-    asset_req = {"filepath": os.path.basename(image_path), "mimetype": guessed}
-    init = _post_json("https://oauth.reddit.com/api/media/asset.json", asset_req, bearer)
+    asset_req = {
+        "filepath": os.path.basename(image_path),
+        "mimetype": guessed,
+        "upload_type": "img",
+    }
+    init = _post_json("https://oauth.reddit.com/api/media/asset.json", asset_req, bearer, retries=5)
     upload_url = init.get("args", {}).get("action")
     fields = init.get("args", {}).get("fields", {})
     asset_id = init.get("asset", {}).get("asset_id") or init.get("asset", {}).get("id")
