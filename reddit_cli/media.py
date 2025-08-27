@@ -69,12 +69,23 @@ def _multipart_post(url: str, fields: Dict[str, str], file_field_name: str, file
 def upload_image_and_get_media_id(auth: RedditScriptAuth, image_path: str) -> str:
     bearer = auth.get_token()
     guessed = mimetypes.guess_type(image_path)[0] or "image/jpeg"
-    asset_req = {
-        "filepath": os.path.basename(image_path),
-        "mimetype": guessed,
-        "upload_type": "img",
-    }
-    init = _post_json("https://oauth.reddit.com/api/media/asset.json", asset_req, bearer, retries=5)
+    base_req = {"filepath": os.path.basename(image_path), "mimetype": guessed}
+    variants = [
+        {**base_req, "upload_type": "img"},
+        {**base_req, "upload_type": "image"},
+        base_req,
+    ]
+    last_err: Exception | None = None
+    init = None
+    for payload in variants:
+        try:
+            init = _post_json("https://oauth.reddit.com/api/media/asset.json", payload, bearer, retries=5)
+            break
+        except Exception as e:
+            last_err = e
+            time.sleep(1)
+    if init is None:
+        raise last_err or RuntimeError("Failed to init media asset")
     upload_url = init.get("args", {}).get("action")
     fields = init.get("args", {}).get("fields", {})
     asset_id = init.get("asset", {}).get("asset_id") or init.get("asset", {}).get("id")
