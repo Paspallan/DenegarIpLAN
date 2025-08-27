@@ -115,9 +115,11 @@ def cmd_discover_image_subs(args: argparse.Namespace) -> None:
 
 def cmd_crosspost_from_subreddit(args: argparse.Namespace) -> None:
     auth = RedditScriptAuth.from_env()
-    allowlist = [a.strip().lower() for a in (args.author_allowlist or "").split(",") if a.strip()]
-    if not allowlist:
-        print("Author allowlist is empty; nothing to do.")
+    allowlist_raw = (args.author_allowlist or "").strip()
+    allow_all = allowlist_raw.lower() == "all"
+    allowlist = [a.strip().lower() for a in allowlist_raw.split(",") if a.strip()] if not allow_all else []
+    if not allow_all and not allowlist:
+        print("Author allowlist is empty; pass 'all' to include any author.")
         return
     with RedditHttpClient() as client:
         posts = fetch_subreddit_top_posts(
@@ -134,7 +136,7 @@ def cmd_crosspost_from_subreddit(args: argparse.Namespace) -> None:
             require_image=True,
         )
         # filter by author allowlist
-        selected = [p for p in cands if (p.get("author", "").lower() in allowlist)]
+        selected = cands if allow_all else [p for p in cands if (p.get("author", "").lower() in allowlist)]
         print(f"Selected {len(selected)} posts from r/{args.subreddit} to crosspost to r/{args.to_subreddit}")
         from time import sleep
         import json
