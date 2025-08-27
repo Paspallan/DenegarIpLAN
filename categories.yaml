@@ -1,0 +1,94 @@
+categories:
+  paisajes:
+    subs:
+      - EarthPorn   # suele pedir [OC], usar solo si es tuyo
+      - NatureIsFuckingLit
+      - Outdoors
+      - pics        # generalista, permite imágenes
+  ciudades:
+    subs:
+      - CityPorn    # a veces no permite crosspost
+      - ArchitecturePorn
+      - pics
+  arquitectura:
+    subs:
+      - ArchitecturePorn
+      - DesignPorn
+      - pics
+  wallpapers:
+    subs:
+      - Wallpapers
+      - iWallpaper
+      - pics
+  animales:
+    subs:
+      - aww
+      - AnimalsBeingBros
+      - pics
+  gatos:
+    subs:
+      - cats
+      - aww
+      - pics
+  perros:
+    subs:
+      - dogs
+      - aww
+      - pics
+  coches:
+    subs:
+      - cars
+      - carporn    # puede no permitir crossposts
+      - carpics    # restringido; validar
+  superdeportivos:
+    subs:
+      - supercar
+      - carporn
+      - pics
+  coches_clasicos:
+    subs:
+      - classiccars
+      - carporn
+      - pics
+  motos:
+    subs:
+      - motorcycles
+      - MotoPorn
+      - pics
+  comida:
+    subs:
+      - food
+      - foodporn
+      - pics
+  naturaleza:
+    subs:
+      - NatureIsFuckingLit
+      - EarthPorn
+      - pics
+  montanas:
+    subs:
+      - EarthPorn
+      - HikingPorn
+      - pics
+  oceanos:
+    subs:
+      - seaporn
+      - BeachPorn
+      - pics
+  atardeceres:
+    subs:
+      - sunsets
+      - pics
+  macro:
+    subs:
+      - macro_photography
+      - pics
+  arte:
+    subs:
+      - Art
+      - ArtPorn
+      - pics
+  tecnologia:
+    subs:
+      - technology
+      - pics
