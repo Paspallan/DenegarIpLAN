@@ -13,7 +13,7 @@ REDDIT_UA = "RedditExplorer/0.1 (by u:example)"
 
 @dataclass
 class HttpClientConfig:
-    base_url: str = "https://www.reddit.com"
+    base_url: str = "https://oauth.reddit.com"
     timeout_seconds: float = 20.0
     min_interval_seconds: float = 0.4
 
@@ -31,11 +31,14 @@ class RedditHttpClient:
             time.sleep(wait)
         self._last_request_at = time.time()
 
-    def get_json(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def get_json(self, path: str, params: Optional[Dict[str, Any]] = None, bearer: Optional[str] = None) -> Any:
         self._rate_limit()
         query = f"?{urlencode(params)}" if params else ""
         url = f"{self.config.base_url}{path}{query}"
-        req = Request(url, headers={"User-Agent": REDDIT_UA, "Accept": "application/json"})
+        headers = {"User-Agent": REDDIT_UA, "Accept": "application/json"}
+        if bearer:
+            headers["Authorization"] = f"Bearer {bearer}"
+        req = Request(url, headers=headers)
         with urlopen(req, timeout=self.config.timeout_seconds) as resp:
             data = resp.read()
             return json.loads(data.decode("utf-8"))

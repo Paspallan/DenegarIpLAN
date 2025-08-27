@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .http import RedditHttpClient
+from .auth import RedditScriptAuth
 
 
 @dataclass
@@ -17,10 +18,12 @@ class SubredditMeta:
     quarantine: bool
 
 
-def search_subreddits(client: RedditHttpClient, query: str, limit: int = 10) -> List[SubredditMeta]:
+def search_subreddits(client: RedditHttpClient, query: str, limit: int = 10, auth: Optional[RedditScriptAuth] = None) -> List[SubredditMeta]:
+    bearer = auth.get_token() if auth else None
     data = client.get_json(
         "/subreddits/search.json",
         params={"q": query, "limit": limit, "include_over_18": True},
+        bearer=bearer,
     )
     results: List[SubredditMeta] = []
     for child in data.get("data", {}).get("children", []):
@@ -39,15 +42,17 @@ def search_subreddits(client: RedditHttpClient, query: str, limit: int = 10) -> 
     return results
 
 
-def fetch_rules(client: RedditHttpClient, subreddit: str) -> Dict[str, Any]:
-    data = client.get_json(f"/r/{subreddit}/about/rules.json")
+def fetch_rules(client: RedditHttpClient, subreddit: str, auth: Optional[RedditScriptAuth] = None) -> Dict[str, Any]:
+    bearer = auth.get_token() if auth else None
+    data = client.get_json(f"/r/{subreddit}/about/rules.json", bearer=bearer)
     return data or {}
 
 
-def fetch_automod_config(client: RedditHttpClient, subreddit: str) -> Optional[str]:
+def fetch_automod_config(client: RedditHttpClient, subreddit: str, auth: Optional[RedditScriptAuth] = None) -> Optional[str]:
     # public automod can be fetched through wiki when exposed
     try:
-        data = client.get_json(f"/r/{subreddit}/wiki/config/automoderator.json")
+        bearer = auth.get_token() if auth else None
+        data = client.get_json(f"/r/{subreddit}/wiki/config/automoderator.json", bearer=bearer)
         # wiki returns { data: { content_md: "..." } }
         return data.get("data", {}).get("content_md", None)
     except Exception:
