@@ -71,3 +71,17 @@ class RedditScriptAuth:
         assert self._token
         return self._token
 
+    def get_current_username(self) -> str:
+        token = self.get_token()
+        req = Request(
+            "https://oauth.reddit.com/api/v1/me",
+            headers={
+                "User-Agent": REDDIT_UA,
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+            },
+        )
+        with urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return data.get("name", "")
+
