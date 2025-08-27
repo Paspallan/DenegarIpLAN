@@ -28,6 +28,7 @@ python3 -m reddit_cli candidates-from-subreddit --subreddit cars --min-score 500
 python3 -m reddit_cli discover-image-subs --limit-per-query 20
 python3 -m reddit_cli candidates --from-user TU_USER --source-subreddit cars --min-score 200 --older-than-days 90
 python3 -m reddit_cli crosspost --fullname t3_abcdef --to-subreddit cars --title "Mi título" --execute
+python3 -m reddit_cli crosspost-from-subreddit --subreddit cars --to-subreddit carpics --author-allowlist tu_user1,tu_user2 --min-score 800 --older-than-days 180 --time-range all --limit 200 --execute
 ```
 
 ### Notas de cumplimiento

@@ -113,6 +113,48 @@ def cmd_discover_image_subs(args: argparse.Namespace) -> None:
         print(f"r/{s}")
 
 
+def cmd_crosspost_from_subreddit(args: argparse.Namespace) -> None:
+    auth = RedditScriptAuth.from_env()
+    allowlist = [a.strip().lower() for a in (args.author_allowlist or "").split(",") if a.strip()]
+    if not allowlist:
+        print("Author allowlist is empty; nothing to do.")
+        return
+    with RedditHttpClient() as client:
+        posts = fetch_subreddit_top_posts(
+            client,
+            subreddit=args.subreddit,
+            time_range=args.time_range,
+            limit=args.limit,
+            auth=auth,
+        )
+        cands = filter_posts_for_candidates(
+            posts,
+            min_score=args.min_score,
+            older_than_days=args.older_than_days,
+            require_image=True,
+        )
+        # filter by author allowlist
+        selected = [p for p in cands if (p.get("author", "").lower() in allowlist)]
+        print(f"Selected {len(selected)} posts from r/{args.subreddit} to crosspost to r/{args.to_subreddit}")
+        from time import sleep
+        import json
+
+        for p in selected:
+            title = p.get("title", "")[:300]
+            res = crosspost(
+                fullname=f"t3_{p.get('id')}",
+                dest_subreddit=args.to_subreddit,
+                title=title,
+                nsfw=bool(p.get("over_18", False)),
+                spoiler=bool(p.get("spoiler", False)),
+                flair_id=None,
+                auth=auth,
+                dry_run=not args.execute,
+            )
+            print(json.dumps({"source": p.get("permalink"), "result": res}, ensure_ascii=False))
+            sleep(2)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reddit_cli", description="Reddit Subreddit Explorer (read-only)"
@@ -159,6 +201,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_discover = sub.add_parser("discover-image-subs", help="Discover image-focused subreddits")
     p_discover.add_argument("--limit-per-query", type=int, default=20, help="Max results per keyword")
     p_discover.set_defaults(func=cmd_discover_image_subs)
+
+    p_xsub = sub.add_parser(
+        "crosspost-from-subreddit",
+        help="Crosspost top old image posts from a subreddit (authors allowlist)",
+    )
+    p_xsub.add_argument("--subreddit", required=True, help="Source subreddit")
+    p_xsub.add_argument("--to-subreddit", required=True, help="Destination subreddit")
+    p_xsub.add_argument("--author-allowlist", required=True, help="Comma-separated authors you own")
+    p_xsub.add_argument("--min-score", type=int, default=500, help="Minimum score")
+    p_xsub.add_argument("--older-than-days", type=int, default=180, help=">= 6 months")
+    p_xsub.add_argument("--time-range", default="all", choices=["year","all"], help="Top time range")
+    p_xsub.add_argument("--limit", type=int, default=200, help="Max posts to scan")
+    p_xsub.add_argument("--execute", action="store_true", help="Actually post (omit for dry-run)")
+    p_xsub.set_defaults(func=cmd_crosspost_from_subreddit)
 
     return parser
 
