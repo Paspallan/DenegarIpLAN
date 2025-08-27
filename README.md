@@ -24,6 +24,8 @@ export REDDIT_PASSWORD=tu_password
 ```bash
 python3 -m reddit_cli search --query cars --limit 10
 python3 -m reddit_cli inspect --subreddit cars
+python3 -m reddit_cli candidates-from-subreddit --subreddit cars --min-score 500 --older-than-days 120 --time-range all --limit 100 --use-auth
+python3 -m reddit_cli discover-image-subs --limit-per-query 20
 python3 -m reddit_cli candidates --from-user TU_USER --source-subreddit cars --min-score 200 --older-than-days 90
 python3 -m reddit_cli crosspost --fullname t3_abcdef --to-subreddit cars --title "Mi título" --execute
 ```

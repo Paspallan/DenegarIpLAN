@@ -8,9 +8,12 @@ from .subreddits import (
     fetch_automod_config,
     fetch_rules,
     search_subreddits,
+    fetch_subreddit_top_posts,
+    filter_posts_for_candidates,
 )
 from .auth import RedditScriptAuth
 from .crosspost import list_user_posts, filter_candidates_by_subreddit, crosspost
+from .subdiscover import discover_image_subreddits
 
 
 def cmd_search(args: argparse.Namespace) -> None:
@@ -77,6 +80,39 @@ def cmd_crosspost(args: argparse.Namespace) -> None:
     print(json.dumps(res, ensure_ascii=False, indent=2))
 
 
+def cmd_candidates_from_subreddit(args: argparse.Namespace) -> None:
+    auth = RedditScriptAuth.from_env() if args.use_auth else None
+    with RedditHttpClient() as client:
+        posts = fetch_subreddit_top_posts(
+            client,
+            subreddit=args.subreddit,
+            time_range=args.time_range,
+            limit=args.limit,
+            auth=auth,
+        )
+        cands = filter_posts_for_candidates(
+            posts,
+            min_score=args.min_score,
+            older_than_days=args.older_than_days,
+            require_image=True,
+        )
+        print("fullname\tsubreddit\tscore\tage_days\turl\ttitle")
+        from time import time
+
+        now = time()
+        for p in cands:
+            age_days = int((now - p.get("created_utc", 0)) / 86400)
+            print(
+                f"{p['fullname']}\t{p.get('subreddit')}\t{p.get('score',0)}\t{age_days}\t{p.get('url','')}\t{p.get('title','')[:80]}"
+            )
+
+
+def cmd_discover_image_subs(args: argparse.Namespace) -> None:
+    subs = discover_image_subreddits(limit_per_query=args.limit_per_query)
+    for s in subs:
+        print(f"r/{s}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="reddit_cli", description="Reddit Subreddit Explorer (read-only)"
@@ -110,6 +146,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_cross.add_argument("--flair-id", default=None, help="Optional flair id")
     p_cross.add_argument("--execute", action="store_true", help="Actually post (omit for dry-run)")
     p_cross.set_defaults(func=cmd_crosspost)
+
+    p_subc = sub.add_parser("candidates-from-subreddit", help="List candidates by subreddit top & old")
+    p_subc.add_argument("--subreddit", required=True, help="Source subreddit")
+    p_subc.add_argument("--min-score", type=int, default=500, help="Minimum score")
+    p_subc.add_argument("--older-than-days", type=int, default=90, help="Minimum age in days")
+    p_subc.add_argument("--time-range", default="all", choices=["day","week","month","year","all"], help="Top time range")
+    p_subc.add_argument("--limit", type=int, default=100, help="Max posts to scan")
+    p_subc.add_argument("--use-auth", action="store_true", help="Use OAuth to avoid 403")
+    p_subc.set_defaults(func=cmd_candidates_from_subreddit)
+
+    p_discover = sub.add_parser("discover-image-subs", help="Discover image-focused subreddits")
+    p_discover.add_argument("--limit-per-query", type=int, default=20, help="Max results per keyword")
+    p_discover.set_defaults(func=cmd_discover_image_subs)
 
     return parser
 

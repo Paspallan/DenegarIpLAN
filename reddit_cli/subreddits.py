@@ -89,3 +89,54 @@ def analyze_posting_restrictions(rules_json: Dict[str, Any], automod_md: Optiona
 
     return restrictions
 
+
+def fetch_subreddit_top_posts(
+    client: RedditHttpClient,
+    subreddit: str,
+    time_range: str = "all",
+    limit: int = 50,
+    auth: Optional[RedditScriptAuth] = None,
+) -> List[Dict[str, Any]]:
+    bearer = auth.get_token() if auth else None
+    data = client.get_json(
+        f"/r/{subreddit}/top.json", params={"t": time_range, "limit": limit}, bearer=bearer
+    )
+    return [c.get("data", {}) for c in data.get("data", {}).get("children", [])]
+
+
+def is_image_post(post: Dict[str, Any]) -> bool:
+    url = (post.get("url") or "").lower()
+    domain = (post.get("domain") or "").lower()
+    post_hint = (post.get("post_hint") or "").lower()
+    is_gallery = bool(post.get("is_gallery"))
+    if post_hint == "image" or is_gallery:
+        return True
+    if domain in {"i.redd.it", "i.imgur.com"}:
+        return True
+    if any(url.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".gif"]):
+        return True
+    return False
+
+
+def filter_posts_for_candidates(
+    posts: List[Dict[str, Any]],
+    min_score: int,
+    older_than_days: int,
+    require_image: bool = True,
+) -> List[Dict[str, Any]]:
+    from time import time
+
+    cutoff = time() - older_than_days * 86400
+    results: List[Dict[str, Any]] = []
+    for p in posts:
+        if p.get("score", 0) < min_score:
+            continue
+        created_utc = p.get("created_utc", 0)
+        if created_utc > cutoff:
+            continue
+        if require_image and not is_image_post(p):
+            continue
+        p["fullname"] = f"t3_{p.get('id')}"
+        results.append(p)
+    return results
+
